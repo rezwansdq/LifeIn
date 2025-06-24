@@ -3,144 +3,111 @@ import { useState } from "react";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { CheckCircle } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Input } from "@/components/ui/input";
+import { Star } from "lucide-react";
+import { toast } from "sonner";
 
 const CheckIn = () => {
-  const [rating, setRating] = useState<number | null>(null);
+  const [rating, setRating] = useState(0);
   const [notes, setNotes] = useState("");
-  const { toast } = useToast();
+  const [mood, setMood] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (rating === null) {
-      toast({
-        title: "Please rate your day",
-        description: "Select a rating from 0-10 before submitting.",
-        variant: "destructive",
-      });
+  const handleSubmit = () => {
+    if (rating === 0) {
+      toast.error("Please select a rating");
       return;
     }
-
-    // TODO: Save to database
-    console.log("Check-in submitted:", { rating, notes, date: new Date() });
     
-    toast({
-      title: "Check-in saved! 🎉",
-      description: "Your daily reflection has been recorded.",
-    });
+    toast.success("Check-in saved successfully!");
+    console.log("Check-in saved:", { rating, notes, mood, date: new Date() });
     
     // Reset form
-    setRating(null);
+    setRating(0);
     setNotes("");
+    setMood("");
   };
 
-  const today = new Date().toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
+  const moods = ["😊", "😐", "😔", "😤", "😴", "🤔", "😍", "😨"];
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       <Navigation />
-      
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="mb-8 text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Daily Check-in</h1>
-          <p className="text-gray-600">{today}</p>
+      <div className="max-w-2xl mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Daily Check-in</h1>
+          <p className="text-gray-600 dark:text-gray-300">How was your day today?</p>
         </div>
 
-        <Card>
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
           <CardHeader>
-            <CardTitle className="flex items-center">
-              <CheckCircle className="mr-2 h-5 w-5 text-primary" />
-              How was your day?
-            </CardTitle>
-            <CardDescription>
-              Take a moment to reflect on your day and rate your overall experience.
-            </CardDescription>
+            <CardTitle className="text-gray-900 dark:text-white">Rate Your Day</CardTitle>
+            <CardDescription className="dark:text-gray-400">Give your day a rating from 1-10</CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Rating Section */}
-              <div className="space-y-4">
-                <Label className="text-base font-medium">Rate your day (0-10)</Label>
-                <div className="grid grid-cols-11 gap-2">
-                  {Array.from({ length: 11 }, (_, i) => i).map((num) => (
-                    <Button
-                      key={num}
-                      type="button"
-                      variant={rating === num ? "default" : "outline"}
-                      className="aspect-square p-0 text-sm"
-                      onClick={() => setRating(num)}
-                    >
-                      {num}
-                    </Button>
-                  ))}
-                </div>
-                {rating !== null && (
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-primary mb-2">{rating}/10</div>
-                    <p className="text-gray-600">
-                      {rating >= 8 ? "Great day! 🌟" : 
-                       rating >= 6 ? "Good day! 😊" : 
-                       rating >= 4 ? "Okay day 😐" : 
-                       "Tough day 💙"}
-                    </p>
-                  </div>
-                )}
+          <CardContent className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                Overall Rating
+              </label>
+              <div className="flex space-x-2">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => setRating(num)}
+                    className={`w-10 h-10 rounded-full border-2 transition-all ${
+                      rating >= num
+                        ? "bg-yellow-400 border-yellow-400 text-yellow-900"
+                        : "border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500 hover:border-yellow-400 dark:hover:border-yellow-400"
+                    }`}
+                  >
+                    <Star className="w-5 h-5 mx-auto" fill={rating >= num ? "currentColor" : "none"} />
+                  </button>
+                ))}
               </div>
-
-              {/* Notes Section */}
-              <div className="space-y-2">
-                <Label htmlFor="notes" className="text-base font-medium">
-                  Daily Notes (Optional)
-                </Label>
-                <Textarea
-                  id="notes"
-                  placeholder="What made your day special? Any thoughts or reflections..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="min-h-[120px]"
-                />
-              </div>
-
-              <Button type="submit" className="w-full" size="lg">
-                Save Check-in
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Recent Check-ins Preview */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle>Recent Check-ins</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[
-                { date: "Yesterday", rating: 8, notes: "Great workout and productive work day!" },
-                { date: "2 days ago", rating: 6, notes: "Good day overall, felt a bit tired." },
-                { date: "3 days ago", rating: 9, notes: "Amazing day with friends and family." },
-              ].map((entry, index) => (
-                <div key={index} className="flex justify-between items-start p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium text-sm">{entry.date}</span>
-                      <span className="text-lg font-bold text-primary">{entry.rating}/10</span>
-                    </div>
-                    {entry.notes && (
-                      <p className="text-sm text-gray-600">{entry.notes}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
+              {rating > 0 && (
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  You rated today: {rating}/10
+                </p>
+              )}
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                How are you feeling?
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {moods.map((emoji) => (
+                  <button
+                    key={emoji}
+                    onClick={() => setMood(emoji)}
+                    className={`w-12 h-12 text-2xl rounded-lg border-2 transition-all ${
+                      mood === emoji
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
+                        : "border-gray-300 dark:border-gray-600 hover:border-blue-300 dark:hover:border-blue-400"
+                    }`}
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="notes" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Notes (optional)
+              </label>
+              <textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="What made today special? Any thoughts or reflections..."
+                className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                rows={4}
+              />
+            </div>
+
+            <Button onClick={handleSubmit} className="w-full">
+              Save Check-in
+            </Button>
           </CardContent>
         </Card>
       </div>

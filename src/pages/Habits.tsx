@@ -4,214 +4,200 @@ import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, Plus, Target, Flame, Calendar } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Progress } from "@/components/ui/progress";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { CheckCircle, Circle, Plus, Target, Flame } from "lucide-react";
+import { toast } from "sonner";
 
 const Habits = () => {
   const [habits, setHabits] = useState([
-    { id: 1, name: "Morning Meditation", description: "10 minutes of mindfulness", currentStreak: 7, longestStreak: 15, completedToday: true },
-    { id: 2, name: "Exercise", description: "30 minutes of physical activity", currentStreak: 12, longestStreak: 18, completedToday: false },
-    { id: 3, name: "Read 30 minutes", description: "Daily reading habit", currentStreak: 3, longestStreak: 8, completedToday: true },
-    { id: 4, name: "Journal", description: "Write thoughts and gratitude", currentStreak: 5, longestStreak: 12, completedToday: false },
-    { id: 5, name: "Drink 8 glasses of water", description: "Stay hydrated throughout the day", currentStreak: 2, longestStreak: 6, completedToday: false },
+    { id: 1, name: "Morning Exercise", completed: true, streak: 5, target: 7, category: "Health" },
+    { id: 2, name: "Read 30 minutes", completed: true, streak: 3, target: 7, category: "Learning" },
+    { id: 3, name: "Meditation", completed: false, streak: 0, target: 7, category: "Wellness" },
+    { id: 4, name: "Drink 8 glasses water", completed: true, streak: 7, target: 7, category: "Health" },
+    { id: 5, name: "Write journal", completed: false, streak: 2, target: 7, category: "Personal" },
   ]);
 
-  const [newHabit, setNewHabit] = useState({ name: "", description: "" });
+  const [newHabit, setNewHabit] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { toast } = useToast();
 
-  const toggleHabit = (habitId: number) => {
+  const toggleHabit = (id: number) => {
     setHabits(habits.map(habit => 
-      habit.id === habitId 
-        ? { 
-            ...habit, 
-            completedToday: !habit.completedToday,
-            currentStreak: !habit.completedToday ? habit.currentStreak + 1 : Math.max(0, habit.currentStreak - 1)
-          }
+      habit.id === id 
+        ? { ...habit, completed: !habit.completed, streak: !habit.completed ? habit.streak + 1 : Math.max(0, habit.streak - 1) }
         : habit
     ));
-    
-    const habit = habits.find(h => h.id === habitId);
-    toast({
-      title: habit?.completedToday ? "Habit unchecked" : "Great job! 🎉",
-      description: habit?.completedToday 
-        ? `${habit.name} marked as incomplete` 
-        : `${habit?.name} completed! Keep the streak going!`,
-    });
+    toast.success("Habit updated!");
   };
 
-  const addHabit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newHabit.name.trim()) return;
-
-    const habit = {
-      id: Date.now(),
-      name: newHabit.name,
-      description: newHabit.description,
-      currentStreak: 0,
-      longestStreak: 0,
-      completedToday: false,
-    };
-
-    setHabits([...habits, habit]);
-    setNewHabit({ name: "", description: "" });
-    setIsDialogOpen(false);
-    
-    toast({
-      title: "New habit added! 🌱",
-      description: `${habit.name} has been added to your habit tracker.`,
-    });
+  const addHabit = () => {
+    if (newHabit.trim()) {
+      const habit = {
+        id: Date.now(),
+        name: newHabit,
+        completed: false,
+        streak: 0,
+        target: 7,
+        category: "Personal"
+      };
+      setHabits([...habits, habit]);
+      setNewHabit("");
+      setIsDialogOpen(false);
+      toast.success("New habit added!");
+    }
   };
 
-  const completedToday = habits.filter(h => h.completedToday).length;
-  const totalHabits = habits.length;
+  const categories = ["All", "Health", "Learning", "Wellness", "Personal"];
+  const [selectedCategory, setSelectedCategory] = useState("All");
+
+  const filteredHabits = selectedCategory === "All" 
+    ? habits 
+    : habits.filter(habit => habit.category === selectedCategory);
+
+  const completionRate = habits.length > 0 ? (habits.filter(h => h.completed).length / habits.length) * 100 : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       <Navigation />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Habit Tracker</h1>
-            <p className="text-gray-600">
-              {completedToday}/{totalHabits} habits completed today
-            </p>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Habit Tracker</h1>
+            <p className="text-gray-600 dark:text-gray-300">Build better habits, one day at a time</p>
           </div>
-          
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button>
-                <Plus className="mr-2 h-4 w-4" />
+                <Plus className="w-4 h-4 mr-2" />
                 Add Habit
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="dark:bg-gray-800 dark:border-gray-700">
               <DialogHeader>
-                <DialogTitle>Add New Habit</DialogTitle>
-                <DialogDescription>
-                  Create a new habit to track your daily progress.
+                <DialogTitle className="dark:text-white">Add New Habit</DialogTitle>
+                <DialogDescription className="dark:text-gray-400">
+                  Create a new habit to track daily
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={addHabit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="habitName">Habit Name</Label>
-                  <Input
-                    id="habitName"
-                    placeholder="e.g., Morning Exercise"
-                    value={newHabit.name}
-                    onChange={(e) => setNewHabit({ ...newHabit, name: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="habitDescription">Description (Optional)</Label>
-                  <Input
-                    id="habitDescription"
-                    placeholder="e.g., 30 minutes of cardio"
-                    value={newHabit.description}
-                    onChange={(e) => setNewHabit({ ...newHabit, description: e.target.value })}
-                  />
-                </div>
-                <Button type="submit" className="w-full">Add Habit</Button>
-              </form>
+              <div className="space-y-4">
+                <Input
+                  value={newHabit}
+                  onChange={(e) => setNewHabit(e.target.value)}
+                  placeholder="Enter habit name..."
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
+                />
+                <Button onClick={addHabit} className="w-full">
+                  Add Habit
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </div>
 
-        {/* Progress Overview */}
-        <div className="grid md:grid-cols-3 gap-4 mb-8">
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Target className="h-8 w-8 text-primary mx-auto mb-2" />
-              <div className="text-2xl font-bold">{totalHabits}</div>
-              <p className="text-sm text-gray-600">Active Habits</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <CheckCircle className="h-8 w-8 text-green-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-green-600">{completedToday}</div>
-              <p className="text-sm text-gray-600">Completed Today</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-6 text-center">
-              <Flame className="h-8 w-8 text-orange-500 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-orange-500">
-                {Math.max(...habits.map(h => h.currentStreak), 0)}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Today's Progress</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round(completionRate)}%</p>
+                </div>
+                <Target className="h-8 w-8 text-blue-500" />
               </div>
-              <p className="text-sm text-gray-600">Longest Current Streak</p>
+              <Progress value={completionRate} className="mt-3" />
+            </CardContent>
+          </Card>
+
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Active Habits</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{habits.length}</p>
+                </div>
+                <CheckCircle className="h-8 w-8 text-green-500" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="dark:bg-gray-800 dark:border-gray-700">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Longest Streak</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                    {Math.max(...habits.map(h => h.streak), 0)} days
+                  </p>
+                </div>
+                <Flame className="h-8 w-8 text-orange-500" />
+              </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Habits List */}
-        <div className="grid gap-4">
-          {habits.map((habit) => (
-            <Card key={habit.id} className={`transition-all ${habit.completedToday ? 'ring-2 ring-green-200 bg-green-50' : ''}`}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
+        <Card className="dark:bg-gray-800 dark:border-gray-700">
+          <CardHeader>
+            <CardTitle className="text-gray-900 dark:text-white">Your Habits</CardTitle>
+            <CardDescription className="dark:text-gray-400">Track your daily habits and build streaks</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex space-x-2 mb-6">
+              {categories.map((category) => (
+                <Button
+                  key={category}
+                  variant={selectedCategory === category ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCategory(category)}
+                  className={selectedCategory !== category ? "dark:border-gray-600 dark:text-gray-300" : ""}
+                >
+                  {category}
+                </Button>
+              ))}
+            </div>
+
+            <div className="space-y-4">
+              {filteredHabits.map((habit) => (
+                <div
+                  key={habit.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700"
+                >
                   <div className="flex items-center space-x-4">
-                    <Button
-                      variant={habit.completedToday ? "default" : "outline"}
-                      size="sm"
-                      className="rounded-full w-10 h-10 p-0"
+                    <button
                       onClick={() => toggleHabit(habit.id)}
+                      className="flex-shrink-0"
                     >
-                      {habit.completedToday && <CheckCircle className="h-5 w-5" />}
-                    </Button>
+                      {habit.completed ? (
+                        <CheckCircle className="h-6 w-6 text-green-500" />
+                      ) : (
+                        <Circle className="h-6 w-6 text-gray-400 dark:text-gray-500" />
+                      )}
+                    </button>
                     <div>
-                      <h3 className={`font-semibold ${habit.completedToday ? 'line-through text-gray-500' : ''}`}>
+                      <h3 className={`font-medium ${habit.completed ? 'line-through text-gray-500 dark:text-gray-400' : 'text-gray-900 dark:text-white'}`}>
                         {habit.name}
                       </h3>
-                      {habit.description && (
-                        <p className="text-sm text-gray-600">{habit.description}</p>
-                      )}
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {habit.streak} day streak • Goal: {habit.target} days/week
+                      </p>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center space-x-4">
-                    <div className="text-center">
-                      <div className="flex items-center text-orange-500">
-                        <Flame className="h-4 w-4 mr-1" />
-                        <span className="font-bold">{habit.currentStreak}</span>
-                      </div>
-                      <p className="text-xs text-gray-500">Current</p>
-                    </div>
-                    <div className="text-center">
-                      <div className="flex items-center text-gray-600">
-                        <Calendar className="h-4 w-4 mr-1" />
-                        <span className="font-bold">{habit.longestStreak}</span>
-                      </div>
-                      <p className="text-xs text-gray-500">Best</p>
-                    </div>
-                    <Badge variant={habit.completedToday ? "default" : "secondary"}>
-                      {habit.completedToday ? "Done" : "Pending"}
+                  <div className="flex items-center space-x-3">
+                    <Badge variant="outline" className="dark:border-gray-600 dark:text-gray-300">
+                      {habit.category}
                     </Badge>
+                    {habit.streak > 0 && (
+                      <div className="flex items-center space-x-1">
+                        <Flame className="h-4 w-4 text-orange-500" />
+                        <span className="text-sm font-medium text-orange-500">{habit.streak}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {habits.length === 0 && (
-          <Card>
-            <CardContent className="p-12 text-center">
-              <Target className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No habits yet</h3>
-              <p className="text-gray-600 mb-4">Start building better habits today!</p>
-              <Button onClick={() => setIsDialogOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Your First Habit
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
