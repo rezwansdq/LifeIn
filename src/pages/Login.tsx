@@ -14,14 +14,32 @@ const Login = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
-    // Simulate login process
-    setTimeout(() => {
+
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Failed to login");
+      }
+
+      localStorage.setItem("token", data.token);
       toast.success("Welcome back!");
-      setIsLoading(false);
-      // In a real app, you would redirect to dashboard here
       window.location.href = "/dashboard";
-    }, 1000);
+
+    } catch (error) {
+      const err = error as Error;
+      toast.error(err.message || "An unexpected error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

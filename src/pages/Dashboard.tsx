@@ -1,25 +1,69 @@
 
+import { useState, useEffect, useCallback } from "react";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CheckCircle, Target, Calendar, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
+
+interface Goal {
+  _id: string;
+  title: string;
+  progress: number;
+  target: string;
+}
 
 const Dashboard = () => {
-  const todayRating = 8;
-  const habits = [
+  const todayRating = 8; // This could also be fetched from backend later
+  const [habits, setHabits] = useState([ // This could also be fetched from backend later
     { name: "Morning Exercise", completed: true, streak: 5 },
     { name: "Read 30 mins", completed: true, streak: 3 },
     { name: "Meditation", completed: false, streak: 0 },
     { name: "Drink 8 glasses water", completed: true, streak: 7 },
-  ];
+  ]);
 
-  const goals = [
-    { title: "Lose 10 pounds", progress: 60, target: "End of month" },
-    { title: "Read 12 books", progress: 25, target: "End of year" },
-    { title: "Learn Spanish", progress: 40, target: "6 months" },
-  ];
+  const [goals, setGoals] = useState<Goal[]>([]);
+  const [loadingGoals, setLoadingGoals] = useState(true);
+  const [errorGoals, setErrorGoals] = useState<string | null>(null);
+
+  const fetchGoals = useCallback(async () => {
+    setLoadingGoals(true);
+    setErrorGoals(null);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setErrorGoals("No authentication token found. Please log in.");
+        setLoadingGoals(false);
+        return;
+      }
+
+      const response = await fetch("/api/goals", {
+        headers: {
+          "x-auth-token": token,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Failed to fetch goals");
+      }
+
+      setGoals(data);
+    } catch (err) {
+      const e = err as Error;
+      setErrorGoals(e.message);
+      toast.error(e.message);
+    } finally {
+      setLoadingGoals(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGoals();
+  }, [fetchGoals]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
@@ -108,16 +152,24 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-6">
-                {goals.map((goal, index) => (
-                  <div key={index} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-900 dark:text-white">{goal.title}</span>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">{goal.progress}%</span>
+                {loadingGoals ? (
+                  <p className="text-gray-500 dark:text-gray-400">Loading goals...</p>
+                ) : errorGoals ? (
+                  <p className="text-red-500 dark:text-red-400">Error: {errorGoals}</p>
+                ) : goals.length === 0 ? (
+                  <p className="text-gray-500 dark:text-gray-400">No goals found. Add some!</p>
+                ) : (
+                  goals.map((goal) => (
+                    <div key={goal._id} className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-gray-900 dark:text-white">{goal.title}</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">{goal.progress}%</span>
+                      </div>
+                      <Progress value={goal.progress} className="h-2" />
+                      <p className="text-xs text-gray-500 dark:text-gray-400">Target: {goal.target}</p>
                     </div>
-                    <Progress value={goal.progress} className="h-2" />
-                    <p className="text-xs text-gray-500 dark:text-gray-400">Target: {goal.target}</p>
-                  </div>
-                ))}
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>

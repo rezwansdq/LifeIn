@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,44 +7,154 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { CheckCircle, Circle, Plus, Target, Flame } from "lucide-react";
+import { CheckCircle, Circle, Plus, Target, Flame, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+interface Habit {
+  _id: string;
+  name: string;
+  completed: boolean;
+  streak: number;
+  target: number;
+  category: string;
+}
+
 const Habits = () => {
-  const [habits, setHabits] = useState([
-    { id: 1, name: "Morning Exercise", completed: true, streak: 5, target: 7, category: "Health" },
-    { id: 2, name: "Read 30 minutes", completed: true, streak: 3, target: 7, category: "Learning" },
-    { id: 3, name: "Meditation", completed: false, streak: 0, target: 7, category: "Wellness" },
-    { id: 4, name: "Drink 8 glasses water", completed: true, streak: 7, target: 7, category: "Health" },
-    { id: 5, name: "Write journal", completed: false, streak: 2, target: 7, category: "Personal" },
-  ]);
-
-  const [newHabit, setNewHabit] = useState("");
+  const [habits, setHabits] = useState<Habit[]>([]);
+  const [newHabitName, setNewHabitName] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const toggleHabit = (id: number) => {
-    setHabits(habits.map(habit => 
-      habit.id === id 
-        ? { ...habit, completed: !habit.completed, streak: !habit.completed ? habit.streak + 1 : Math.max(0, habit.streak - 1) }
-        : habit
-    ));
-    toast.success("Habit updated!");
+  const fetchHabits = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("No authentication token found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch("/api/habits", {
+        headers: {
+          "x-auth-token": token,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Failed to fetch habits");
+      }
+
+      setHabits(data);
+    } catch (err) {
+      const e = err as Error;
+      setError(e.message);
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHabits();
+  }, [fetchHabits]);
+
+  const toggleHabit = async (id: string) => {
+    const habitToUpdate = habits.find(h => h._id === id);
+    if (!habitToUpdate) return;
+
+    const updatedCompleted = !habitToUpdate.completed;
+    const updatedStreak = updatedCompleted ? habitToUpdate.streak + 1 : Math.max(0, habitToUpdate.streak - 1);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`/api/habits/${id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token || "",
+        },
+        body: JSON.stringify({ completed: updatedCompleted, streak: updatedStreak }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Failed to update habit");
+      }
+
+      setHabits(habits.map(habit =>
+        habit._id === id ? { ...habit, completed: updatedCompleted, streak: updatedStreak } : habit
+      ));
+      toast.success("Habit updated!");
+    } catch (err) {
+      const e = err as Error;
+      toast.error(e.message);
+    }
   };
 
-  const addHabit = () => {
-    if (newHabit.trim()) {
-      const habit = {
-        id: Date.now(),
-        name: newHabit,
-        completed: false,
-        streak: 0,
-        target: 7,
-        category: "Personal"
-      };
-      setHabits([...habits, habit]);
-      setNewHabit("");
+  const addHabit = async () => {
+    if (!newHabitName.trim()) {
+      toast.error("Habit name cannot be empty.");
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/habits", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token || "",
+        },
+        body: JSON.stringify({ name: newHabitName }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Failed to add habit");
+      }
+
+      setHabits([...habits, data]);
+      setNewHabitName("");
       setIsDialogOpen(false);
       toast.success("New habit added!");
+    } catch (err) {
+      const e = err as Error;
+      toast.error(e.message);
+    }
+  };
+
+  const deleteHabit = async (id: string) => {
+    if (!window.confirm("Are you sure you want to delete this habit?")) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch(`/api/habits/${id}`, {
+        method: "DELETE",
+        headers: {
+          "x-auth-token": token || "",
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Failed to delete habit");
+      }
+
+      setHabits(habits.filter(habit => habit._id !== id));
+      toast.success("Habit deleted!");
+    } catch (err) {
+      const e = err as Error;
+      toast.error(e.message);
     }
   };
 
@@ -82,8 +192,8 @@ const Habits = () => {
               </DialogHeader>
               <div className="space-y-4">
                 <Input
-                  value={newHabit}
-                  onChange={(e) => setNewHabit(e.target.value)}
+                  value={newHabitName}
+                  onChange={(e) => setNewHabitName(e.target.value)}
                   placeholder="Enter habit name..."
                   className="dark:bg-gray-700 dark:border-gray-600 dark:text-white"
                 />
@@ -159,12 +269,12 @@ const Habits = () => {
             <div className="space-y-4">
               {filteredHabits.map((habit) => (
                 <div
-                  key={habit.id}
+                  key={habit._id}
                   className="flex items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-700"
                 >
                   <div className="flex items-center space-x-4">
                     <button
-                      onClick={() => toggleHabit(habit.id)}
+                      onClick={() => toggleHabit(habit._id)}
                       className="flex-shrink-0"
                     >
                       {habit.completed ? (
@@ -178,7 +288,7 @@ const Habits = () => {
                         {habit.name}
                       </h3>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {habit.streak} day streak • Goal: {habit.target} days/week
+                        {habit.streak} day streak
                       </p>
                     </div>
                   </div>
@@ -192,6 +302,14 @@ const Habits = () => {
                         <span className="text-sm font-medium text-orange-500">{habit.streak}</span>
                       </div>
                     )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => deleteHabit(habit._id)}
+                      className="text-gray-400 hover:text-red-500"
+                    >
+                      <Trash2 className="h-5 w-5" />
+                    </Button>
                   </div>
                 </div>
               ))}
