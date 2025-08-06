@@ -11,6 +11,11 @@ node_modules
 dist
 dist-ssr
 *.local
+# Backend specific ignores
+backend/node_modules
+backend/dist
+backend/coverage
+backend/.env
 
 # Editor directories and files
 .vscode/*
