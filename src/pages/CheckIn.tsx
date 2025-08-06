@@ -11,20 +11,45 @@ const CheckIn = () => {
   const [rating, setRating] = useState(0);
   const [notes, setNotes] = useState("");
   const [mood, setMood] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (rating === 0) {
       toast.error("Please select a rating");
       return;
     }
     
-    toast.success("Check-in saved successfully!");
-    console.log("Check-in saved:", { rating, notes, mood, date: new Date() });
-    
-    // Reset form
-    setRating(0);
-    setNotes("");
-    setMood("");
+    setIsLoading(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const response = await fetch("/api/checkins", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-auth-token": token || "",
+        },
+        body: JSON.stringify({ rating, notes, mood }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Failed to save check-in");
+      }
+
+      toast.success("Check-in saved successfully!");
+      
+      // Reset form
+      setRating(0);
+      setNotes("");
+      setMood("");
+    } catch (err) {
+      const e = err as Error;
+      toast.error(e.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const moods = ["😊", "😐", "😔", "😤", "😴", "🤔", "😍", "😨"];
@@ -105,8 +130,8 @@ const CheckIn = () => {
               />
             </div>
 
-            <Button onClick={handleSubmit} className="w-full">
-              Save Check-in
+            <Button onClick={handleSubmit} className="w-full" disabled={isLoading}>
+              {isLoading ? "Saving..." : "Save Check-in"}
             </Button>
           </CardContent>
         </Card>

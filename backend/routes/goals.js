@@ -6,20 +6,19 @@ const Goal = require('../models/Goal');
 // @route   GET /api/goals
 // @desc    Get all goals for a user
 // @access  Private
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, async (req, res, next) => {
   try {
     const goals = await Goal.find({ user: req.user.id }).sort({ createdAt: -1 });
     res.json(goals);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    next(err);
   }
 });
 
 // @route   POST /api/goals
 // @desc    Create a new goal
 // @access  Private
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, async (req, res, next) => {
   const { title, progress, target } = req.body;
 
   try {
@@ -33,15 +32,14 @@ router.post('/', auth, async (req, res) => {
     const goal = await newGoal.save();
     res.json(goal);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    next(err);
   }
 });
 
 // @route   PUT /api/goals/:id
 // @desc    Update a goal
 // @access  Private
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, async (req, res, next) => {
   const { title, progress, target } = req.body;
 
   // Build goal object
@@ -68,15 +66,14 @@ router.put('/:id', auth, async (req, res) => {
 
     res.json(goal);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    next(err);
   }
 });
 
 // @route   DELETE /api/goals/:id
 // @desc    Delete a goal
 // @access  Private
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, async (req, res, next) => {
   try {
     let goal = await Goal.findById(req.params.id);
 
@@ -91,8 +88,7 @@ router.delete('/:id', auth, async (req, res) => {
 
     res.json({ msg: 'Goal removed' });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    next(err);
   }
 });
 

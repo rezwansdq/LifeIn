@@ -1,38 +1,81 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Navigation from "@/components/Navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { toast } from "sonner";
+
+interface CheckInEntry {
+  _id: string;
+  date: string; // ISO string
+  rating: number;
+  notes?: string;
+  mood?: string;
+}
 
 const Calendar = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [checkIns, setCheckIns] = useState<CheckInEntry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const today = new Date();
   const currentMonth = currentDate.getMonth();
   const currentYear = currentDate.getFullYear();
-
-  // Sample data for demonstration
-  const checkInData = {
-    "2024-01-15": { rating: 8, mood: "😊", habits: 3 },
-    "2024-01-16": { rating: 6, mood: "😐", habits: 2 },
-    "2024-01-17": { rating: 9, mood: "😍", habits: 4 },
-    "2024-01-18": { rating: 7, mood: "😊", habits: 3 },
-    "2024-01-19": { rating: 5, mood: "😔", habits: 1 },
-  };
 
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   };
 
   const getFirstDayOfMonth = (date: Date) => {
-    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    // getDay() returns 0 for Sunday, 1 for Monday, etc.
+    // We want Monday to be the first day of the week (index 0) for calendar display
+    const day = new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+    return day === 0 ? 6 : day - 1; // Convert Sunday (0) to 6, Monday (1) to 0, etc.
   };
 
   const formatDateKey = (date: Date) => {
     return date.toISOString().split('T')[0];
   };
+
+  const fetchCheckIns = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setError("No authentication token found. Please log in.");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch("/api/checkins", {
+        headers: {
+          "x-auth-token": token,
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.msg || "Failed to fetch check-ins");
+      }
+
+      setCheckIns(data);
+    } catch (err) {
+      const e = err as Error;
+      setError(e.message);
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCheckIns();
+  }, [fetchCheckIns]);
 
   const navigateMonth = (direction: 'prev' | 'next') => {
     setCurrentDate(new Date(currentYear, currentMonth + (direction === 'next' ? 1 : -1), 1));
@@ -44,6 +87,13 @@ const Calendar = () => {
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ];
+
+  const checkInsByDate = checkIns.reduce((acc, checkIn) => {
+    const date = new Date(checkIn.date);
+    const key = formatDateKey(date);
+    acc[key] = checkIn;
+    return acc;
+  }, {} as Record<string, CheckInEntry>);
 
   const days = [];
   
@@ -93,7 +143,7 @@ const Calendar = () => {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-7 gap-1 mb-4">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
                     <div key={day} className="p-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
                       {day}
                     </div>
@@ -105,7 +155,7 @@ const Calendar = () => {
                     
                     const date = new Date(currentYear, currentMonth, day);
                     const dateKey = formatDateKey(date);
-                    const checkInInfo = checkInData[dateKey];
+                    const checkInInfo = checkInsByDate[dateKey];
                     const isToday = date.toDateString() === today.toDateString();
                     const isSelected = date.toDateString() === selectedDate.toDateString();
                     
@@ -126,7 +176,7 @@ const Calendar = () => {
                           {checkInInfo && (
                             <div className="flex space-x-1">
                               <div className={`w-2 h-2 rounded-full ${getRatingColor(checkInInfo.rating)}`} />
-                              <span className="text-xs">{checkInInfo.mood}</span>
+                              {checkInInfo.mood && <span className="text-xs">{checkInInfo.mood}</span>}
                             </div>
                           )}
                         </div>
@@ -151,26 +201,30 @@ const Calendar = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {checkInData[formatDateKey(selectedDate)] ? (
+                {loading ? (
+                  <p className="text-gray-500 dark:text-gray-400">Loading check-in data...</p>
+                ) : error ? (
+                  <p className="text-red-500 dark:text-red-400">Error: {error}</p>
+                ) : checkInsByDate[formatDateKey(selectedDate)] ? (
                   <div className="space-y-4">
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Day Rating</p>
                       <div className="flex items-center space-x-2">
-                        <div className={`w-4 h-4 rounded-full ${getRatingColor(checkInData[formatDateKey(selectedDate)].rating)}`} />
+                        <div className={`w-4 h-4 rounded-full ${getRatingColor(checkInsByDate[formatDateKey(selectedDate)].rating)}`} />
                         <span className="font-semibold text-gray-900 dark:text-white">
-                          {checkInData[formatDateKey(selectedDate)].rating}/10
+                          {checkInsByDate[formatDateKey(selectedDate)].rating}/10
                         </span>
                       </div>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Mood</p>
-                      <span className="text-2xl">{checkInData[formatDateKey(selectedDate)].mood}</span>
+                      <span className="text-2xl">{checkInsByDate[formatDateKey(selectedDate)].mood}</span>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">Habits Completed</p>
-                      <span className="font-semibold text-gray-900 dark:text-white">
-                        {checkInData[formatDateKey(selectedDate)].habits} habits
-                      </span>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">Notes</p>
+                      <p className="text-gray-900 dark:text-white">
+                        {checkInsByDate[formatDateKey(selectedDate)].notes || "No notes for this day."}
+                      </p>
                     </div>
                   </div>
                 ) : (

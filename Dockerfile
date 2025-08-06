@@ -9,11 +9,7 @@ COPY bun.lockb ./
 
 # Install dependencies
 # Using bun if bun.lockb exists, otherwise npm
-RUN if [ -f bun.lockb ]; then \
-      npm install -g bun && bun install; \
-    else \
-      npm install; \
-    fi
+RUN npm install
 
 # Copy the rest of the application source code
 COPY . .

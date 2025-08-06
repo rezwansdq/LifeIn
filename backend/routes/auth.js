@@ -8,20 +8,19 @@ const auth = require('../middleware/auth');
 // @route   GET /api/auth
 // @desc    Get logged in user
 // @access  Private
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, async (req, res, next) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
     res.json(user);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    next(err);
   }
 });
 
 // @route   POST /api/auth/register
 // @desc    Register a new user
 // @access  Public
-router.post('/register', async (req, res) => {
+router.post('/register', async (req, res, next) => {
   const { name, email, password } = req.body;
 
   try {
@@ -54,15 +53,14 @@ router.post('/register', async (req, res) => {
       }
     );
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    next(err);
   }
 });
 
 // @route   POST /api/auth/login
 // @desc    Authenticate user & get token
 // @access  Public
-router.post('/login', async (req, res) => {
+router.post('/login', async (req, res, next) => {
   const { email, password } = req.body;
 
   try {
@@ -92,8 +90,29 @@ router.post('/login', async (req, res) => {
       }
     );
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server error');
+    next(err);
+  }
+});
+
+// @route   PUT /api/auth/update
+// @desc    Update user details
+// @access  Private
+router.put('/update', auth, async (req, res, next) => {
+  const { name } = req.body;
+
+  try {
+    const user = await User.findById(req.user.id);
+
+    if (!user) {
+      return res.status(404).json({ msg: 'User not found' });
+    }
+
+    user.name = name || user.name;
+
+    await user.save();
+    res.json(user);
+  } catch (err) {
+    next(err);
   }
 });
 

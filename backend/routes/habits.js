@@ -6,20 +6,19 @@ const Habit = require('../models/Habit');
 // @route   GET /api/habits
 // @desc    Get all habits for a user
 // @access  Private
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, async (req, res, next) => {
   try {
     const habits = await Habit.find({ user: req.user.id }).sort({ createdAt: -1 });
     res.json(habits);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    next(err);
   }
 });
 
 // @route   POST /api/habits
 // @desc    Create a new habit
 // @access  Private
-router.post('/', auth, async (req, res) => {
+router.post('/', auth, async (req, res, next) => {
   const { name } = req.body;
 
   try {
@@ -31,15 +30,14 @@ router.post('/', auth, async (req, res) => {
     const habit = await newHabit.save();
     res.json(habit);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    next(err);
   }
 });
 
 // @route   PUT /api/habits/:id
 // @desc    Update a habit
 // @access  Private
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', auth, async (req, res, next) => {
   const { name, completed, streak } = req.body;
 
   // Build habit object
@@ -66,15 +64,14 @@ router.put('/:id', auth, async (req, res) => {
 
     res.json(habit);
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    next(err);
   }
 });
 
 // @route   DELETE /api/habits/:id
 // @desc    Delete a habit
 // @access  Private
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', auth, async (req, res, next) => {
   try {
     let habit = await Habit.findById(req.params.id);
 
@@ -89,8 +86,7 @@ router.delete('/:id', auth, async (req, res) => {
 
     res.json({ msg: 'Habit removed' });
   } catch (err) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
+    next(err);
   }
 });
 
